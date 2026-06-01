@@ -62,7 +62,16 @@ public class AlarmService {
     }
 
     public List<Alarm> getDueAlarms(int hour, int minute, int dayOfWeek) {
-        return new ArrayList<>();
+        List<Alarm> dueAlarms = new ArrayList<>();
+        if (vacationMode) {
+            return dueAlarms;
+        }
+        for (Alarm alarm : alarms) {
+            if (alarm != null && alarm.isActive() && alarm.matchesTimeAndDay(hour, minute, dayOfWeek)) {
+                dueAlarms.add(alarm);
+            }
+        }
+        return dueAlarms;
     }
 
     public void setVacationMode(boolean enabled) {
@@ -74,16 +83,48 @@ public class AlarmService {
     }
 
     public List<String> detectConflicts() {
-        return new ArrayList<>();
+        List<String> conflicts = new ArrayList<>();
+        for (int i = 0; i < alarms.size(); i++) {
+            Alarm first = alarms.get(i);
+            if (first == null || first.getDaysOfWeek() == null) {
+                continue;
+            }
+            for (int j = i + 1; j < alarms.size(); j++) {
+                Alarm second = alarms.get(j);
+                if (second == null || second.getDaysOfWeek() == null) {
+                    continue;
+                }
+                if (first.getHour() == second.getHour() && first.getMinute() == second.getMinute()) {
+                    for (Integer day : first.getDaysOfWeek()) {
+                        if (day != null && second.getDaysOfWeek().contains(day)) {
+                            conflicts.add("Conflicto entre alarma " + first.getId() + " y alarma " + second.getId() + " en hora " + first.getHour() + ":" + first.getMinute() + " día " + day);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return conflicts;
     }
 
     public void registerAlarmStop(Alarm alarm, boolean onTime) {
     }
 
     public void registerSnooze(Alarm alarm) {
+        if (alarm == null) {
+            return;
+        }
+        if (alarm.getSnoozesUsed() >= alarm.getMaxSnoozes()) {
+            return;
+        }
+        alarm.setSnoozesUsed(alarm.getSnoozesUsed() + 1);
+        totalSnoozes++;
     }
 
     public String getSleepStatistics() {
-        return "";
+        return "Estadísticas de sueño:\n" +
+                "- Total de repetidas: " + totalSnoozes + "\n" +
+                "- Paradas a tiempo: " + onTimeStops + "\n" +
+                "- Paradas tardías: " + lateStops;
     }
 }
